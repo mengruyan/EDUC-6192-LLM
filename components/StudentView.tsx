@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Assignment, Submission } from '../types';
+import { Assignment, Submission, User } from '../types';
 import AssignmentTab from './AssignmentTab';
 import SubmissionTab from './SubmissionTab';
 import FeedbackTab from './FeedbackTab';
@@ -9,15 +9,13 @@ import { AssignmentIcon, SubmissionIcon, FeedbackIcon } from './Icons';
 type StudentTab = 'Assignment' | 'Submission' | 'Feedback';
 
 interface StudentViewProps {
+  currentUser: User;
   assignments: Assignment[];
   submissions: Submission[];
   updateSubmissions: (submissions: Submission[]) => void;
 }
 
-const STUDENT_ID = "student-li-wei";
-const STUDENT_NAME = "Li Wei (李伟)";
-
-const StudentView: React.FC<StudentViewProps> = ({ assignments, submissions, updateSubmissions }) => {
+const StudentView: React.FC<StudentViewProps> = ({ currentUser, assignments, submissions, updateSubmissions }) => {
   const [activeTab, setActiveTab] = useState<StudentTab>('Assignment');
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(assignments[0]?.id || null);
 
@@ -33,12 +31,12 @@ const StudentView: React.FC<StudentViewProps> = ({ assignments, submissions, upd
   );
 
   const studentSubmission = useMemo(() => 
-    submissions.find(sub => sub.studentId === STUDENT_ID && sub.assignmentId === selectedAssignmentId),
-    [submissions, selectedAssignmentId]
+    submissions.find(sub => sub.studentId === currentUser.id && sub.assignmentId === selectedAssignmentId),
+    [submissions, selectedAssignmentId, currentUser.id]
   );
 
   const handleNewSubmission = (submission: Submission) => {
-    const otherSubmissions = submissions.filter(s => !(s.studentId === STUDENT_ID && s.assignmentId === selectedAssignmentId));
+    const otherSubmissions = submissions.filter(s => !(s.studentId === currentUser.id && s.assignmentId === selectedAssignmentId));
     const newSubmissions = [...otherSubmissions, submission];
     updateSubmissions(newSubmissions);
     setActiveTab('Feedback');
@@ -56,8 +54,8 @@ const StudentView: React.FC<StudentViewProps> = ({ assignments, submissions, upd
                     assignment={activeAssignment} 
                     existingSubmission={studentSubmission}
                     onNewSubmission={handleNewSubmission} 
-                    studentId={STUDENT_ID}
-                    studentName={STUDENT_NAME}
+                    studentId={currentUser.id}
+                    studentName={currentUser.name}
                 />;
       case 'Feedback':
         return <FeedbackTab submission={studentSubmission} assignment={activeAssignment}/>;

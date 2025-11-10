@@ -4,6 +4,14 @@ export enum UserRole {
   Student = 'Student',
 }
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string; // This is for simulation only. NEVER store plaintext passwords.
+  role: UserRole;
+}
+
 export interface RubricCriterion {
   id: string;
   name:string;

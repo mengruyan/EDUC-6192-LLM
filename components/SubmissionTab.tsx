@@ -58,9 +58,12 @@ const SubmissionTab: React.FC<SubmissionTabProps> = ({ assignment, existingSubmi
       mediaRecorderRef.current = new MediaRecorder(stream);
       audioChunksRef.current = [];
       
-      // Fix: Explicitly type the event parameter to avoid implicit 'any'.
-      mediaRecorderRef.current.ondataavailable = (event: { data: Blob }) => {
-        audioChunksRef.current.push(event.data);
+      // The event from ondataavailable provides a blob of audio data.
+      // We rely on type inference for the event parameter and check blob size to be robust.
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorderRef.current.onstop = () => {

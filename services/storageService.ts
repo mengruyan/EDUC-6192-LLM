@@ -1,7 +1,9 @@
+import { User } from '../types';
 
 const STORAGE_KEY = 'chinese-culture-grader-data';
 
 export interface AppData {
+  users: User[];
   assignments: any[];
   submissions: any[];
 }

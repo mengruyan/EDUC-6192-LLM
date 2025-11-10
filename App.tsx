@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole, Assignment, Submission } from './types';
+import { UserRole, Assignment, Submission, User } from './types';
 import TeacherView from './components/TeacherView';
 import StudentView from './components/StudentView';
+import LoginView from './components/LoginView';
+import SignUpView from './components/SignUpView';
 import { saveData, loadData } from './services/storageService';
+import { DEFAULT_USERS } from './data/users';
 
 const FIRST_ASSIGNMENT_ID = 'default-assignment-1';
 
@@ -31,29 +34,70 @@ const DEFAULT_ASSIGNMENTS: Assignment[] = [{
 const DEFAULT_SUBMISSIONS: Submission[] = [];
 
 const App: React.FC = () => {
-  const [userRole, setUserRole] = useState<UserRole>(UserRole.Teacher);
-  const [assignments, setAssignments] = useState<Assignment[]>(DEFAULT_ASSIGNMENTS);
-  const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(FIRST_ASSIGNMENT_ID);
-  const [submissions, setSubmissions] = useState<Submission[]>(DEFAULT_SUBMISSIONS);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [authView, setAuthView] = useState<'login' | 'signup'>('login');
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     const data = loadData();
-    if (data && data.assignments && data.assignments.length > 0) {
-      setAssignments(data.assignments);
-      setSubmissions(data.submissions || []);
-      setActiveAssignmentId(data.assignments[0].id);
+    if (data) {
+        setUsers(data.users && data.users.length > 0 ? data.users : DEFAULT_USERS);
+        setAssignments(data.assignments && data.assignments.length > 0 ? data.assignments : DEFAULT_ASSIGNMENTS);
+        setSubmissions(data.submissions || DEFAULT_SUBMISSIONS);
+        const firstAssignmentId = (data.assignments && data.assignments.length > 0 ? data.assignments[0].id : null) ?? (DEFAULT_ASSIGNMENTS.length > 0 ? DEFAULT_ASSIGNMENTS[0].id : null);
+        setActiveAssignmentId(firstAssignmentId);
     } else {
-        setActiveAssignmentId(assignments.length > 0 ? assignments[0].id : null)
+        setUsers(DEFAULT_USERS);
+        setAssignments(DEFAULT_ASSIGNMENTS);
+        setSubmissions(DEFAULT_SUBMISSIONS);
+        setActiveAssignmentId(DEFAULT_ASSIGNMENTS.length > 0 ? DEFAULT_ASSIGNMENTS[0].id : null);
     }
     setIsDataLoaded(true);
   }, []);
 
   useEffect(() => {
     if (isDataLoaded) {
-      saveData({ assignments, submissions });
+      saveData({ users, assignments, submissions });
     }
-  }, [assignments, submissions, isDataLoaded]);
+  }, [users, assignments, submissions, isDataLoaded]);
+
+  const handleLogin = (email: string, password: string) => {
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    if (user) {
+        setCurrentUser(user);
+        setAuthError('');
+        setAuthView('login');
+    } else {
+        setAuthError('Invalid email or password.');
+    }
+  };
+  
+  const handleSignUp = (details: { name: string; email: string; password: string; role: UserRole }) => {
+    const { name, email, password, role } = details;
+    if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+        setAuthError('An account with this email already exists.');
+        return;
+    }
+    const newUser: User = {
+        id: `user-${Date.now()}`,
+        name,
+        email,
+        password, // Still plaintext for simulation
+        role
+    };
+    setUsers([...users, newUser]);
+    setCurrentUser(newUser); // Auto-login
+    setAuthError('');
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+  }
   
   const updateAssignment = (updatedAssignment: Assignment) => {
     setAssignments(assignments.map(a => a.id === updatedAssignment.id ? updatedAssignment : a));
@@ -71,7 +115,7 @@ const App: React.FC = () => {
     if (!originalAssignment) return;
 
     const newAssignment = {
-      ...JSON.parse(JSON.stringify(originalAssignment)), // Deep copy to avoid nested reference issues
+      ...JSON.parse(JSON.stringify(originalAssignment)),
       id: `asgn-${Date.now()}`,
       title: `Copy of ${originalAssignment.title}`,
     };
@@ -106,6 +150,14 @@ const App: React.FC = () => {
   if (!isDataLoaded) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
+  
+  if (!currentUser) {
+    if (authView === 'login') {
+        return <LoginView onLogin={handleLogin} onSwitchToSignUp={() => { setAuthView('signup'); setAuthError(''); }} error={authError} />;
+    } else {
+        return <SignUpView onSignUp={handleSignUp} onSwitchToLogin={() => { setAuthView('login'); setAuthError(''); }} error={authError} />;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
@@ -114,28 +166,19 @@ const App: React.FC = () => {
           <h1 className="text-2xl font-bold text-indigo-600">
             中华文化 | AI Grader
           </h1>
-          <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-lg">
-            <button
-              onClick={() => setUserRole(UserRole.Teacher)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                userRole === UserRole.Teacher ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 hover:bg-slate-200'
-              }`}
-            >
-              Teacher
-            </button>
-            <button
-              onClick={() => setUserRole(UserRole.Student)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                userRole === UserRole.Student ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 hover:bg-slate-200'
-              }`}
-            >
-              Student
-            </button>
-          </div>
+          <div className="flex items-center space-x-4">
+              <span className="text-gray-600 hidden sm:block">Welcome, {currentUser.name}</span>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-slate-100 text-gray-600 hover:bg-slate-200"
+              >
+                Logout
+              </button>
+            </div>
         </div>
       </header>
       <main className="container mx-auto p-4 md:p-8">
-        {userRole === UserRole.Teacher ? (
+        {currentUser.role === UserRole.Teacher ? (
           <TeacherView 
             assignments={assignments}
             activeAssignment={activeAssignment}
@@ -148,7 +191,7 @@ const App: React.FC = () => {
             updateSubmissions={updateSubmissions}
           />
         ) : (
-          <StudentView assignments={assignments} submissions={submissions} updateSubmissions={updateSubmissions}/>
+          <StudentView currentUser={currentUser} assignments={assignments} submissions={submissions} updateSubmissions={updateSubmissions}/>
         )}
       </main>
     </div>
