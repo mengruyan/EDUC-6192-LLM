@@ -1,0 +1,7 @@
+{
+  "name": "AI Chinese Culture Grader",
+  "description": "An automated grading assistant for high school Chinese Culture assignments. Provides separate interfaces for teachers to create assignments and rubrics, and for students to submit work and receive instant, rubric-based feedback from an AI.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
